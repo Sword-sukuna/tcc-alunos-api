@@ -4,6 +4,7 @@ export default async function handler(req, res) {
   let db;
 
   try {
+    // conexão com Aiven
     db = await mysql.createConnection({
       host: process.env.DB_HOST,
       port: Number(process.env.DB_PORT),
@@ -15,7 +16,27 @@ export default async function handler(req, res) {
       }
     });
 
-    // ✅ CADASTRAR ALUNO
+    // 🗄 cria tabelas automaticamente
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS blocos (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nome_bloco VARCHAR(100) NOT NULL
+      )
+    `);
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS alunos (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nome VARCHAR(150) NOT NULL,
+        idade INT,
+        email VARCHAR(150),
+        curso VARCHAR(100),
+        bloco_id INT,
+        FOREIGN KEY (bloco_id) REFERENCES blocos(id)
+      )
+    `);
+
+    // 👨‍🎓 CADASTRAR ALUNO
     if (req.method === "POST") {
       const { nome, idade, email, curso, bloco_id } = req.body;
 
@@ -44,7 +65,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // ✅ BUSCAR POR NOME
+    // 🔍 BUSCAR / LISTAR
     if (req.method === "GET") {
       const { nome, bloco } = req.query;
 
@@ -70,11 +91,9 @@ export default async function handler(req, res) {
       }
 
       const [rows] = await db.execute(query, params);
-
       return res.status(200).json(rows);
     }
 
-    // ❌ método inválido
     return res.status(405).json({
       error: "Método não permitido"
     });
