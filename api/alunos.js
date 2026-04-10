@@ -1,11 +1,12 @@
 import mysql from "mysql2/promise";
 
 export default async function handler(req, res) {
-  // ✅ CORS para GitHub Pages
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  // ✅ CORS LIBERADO
+  res.setHeader("Access-Control-Allow-Origin", "https://sword-sukuna.github.io");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
+  // ✅ responder preflight
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -13,7 +14,6 @@ export default async function handler(req, res) {
   let db;
 
   try {
-    // ✅ conexão Aiven
     db = await mysql.createConnection({
       host: process.env.DB_HOST,
       port: Number(process.env.DB_PORT),
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       }
     });
 
-    // ✅ cria tabelas automaticamente
+    // cria tabelas
     await db.execute(`
       CREATE TABLE IF NOT EXISTS blocos (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -45,15 +45,9 @@ export default async function handler(req, res) {
       )
     `);
 
-    // 👨‍🎓 CADASTRO
+    // 👨‍🎓 CADASTRAR
     if (req.method === "POST") {
       const { nome, idade, email, curso, bloco_id } = req.body;
-
-      if (!nome) {
-        return res.status(400).json({
-          error: "Nome é obrigatório"
-        });
-      }
 
       await db.execute(
         `INSERT INTO alunos (nome, idade, email, curso, bloco_id)
@@ -68,32 +62,20 @@ export default async function handler(req, res) {
       );
 
       return res.status(200).json({
-        success: true,
         message: "Aluno cadastrado com sucesso"
       });
     }
 
-    // 🔍 LISTAR E BUSCAR
+    // 🔍 LISTAR
     if (req.method === "GET") {
-      const { nome, bloco } = req.query;
+      const { nome } = req.query;
 
-      let query = `
-        SELECT alunos.*, blocos.nome_bloco
-        FROM alunos
-        LEFT JOIN blocos ON alunos.bloco_id = blocos.id
-      `;
-
-      const params = [];
+      let query = "SELECT * FROM alunos";
+      let params = [];
 
       if (nome) {
-        query += " WHERE alunos.nome LIKE ?";
+        query += " WHERE nome LIKE ?";
         params.push(`%${nome}%`);
-      }
-
-      if (bloco) {
-        query += nome ? " AND " : " WHERE ";
-        query += " alunos.bloco_id = ?";
-        params.push(bloco);
       }
 
       const [rows] = await db.execute(query, params);
