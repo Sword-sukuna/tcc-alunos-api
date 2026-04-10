@@ -1,10 +1,19 @@
 import mysql from "mysql2/promise";
 
 export default async function handler(req, res) {
+  // ✅ CORS para GitHub Pages
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   let db;
 
   try {
-    // conexão com Aiven
+    // ✅ conexão Aiven
     db = await mysql.createConnection({
       host: process.env.DB_HOST,
       port: Number(process.env.DB_PORT),
@@ -16,7 +25,7 @@ export default async function handler(req, res) {
       }
     });
 
-    // 🗄 cria tabelas automaticamente
+    // ✅ cria tabelas automaticamente
     await db.execute(`
       CREATE TABLE IF NOT EXISTS blocos (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -36,7 +45,7 @@ export default async function handler(req, res) {
       )
     `);
 
-    // 👨‍🎓 CADASTRAR ALUNO
+    // 👨‍🎓 CADASTRO
     if (req.method === "POST") {
       const { nome, idade, email, curso, bloco_id } = req.body;
 
@@ -47,9 +56,8 @@ export default async function handler(req, res) {
       }
 
       await db.execute(
-        `INSERT INTO alunos 
-        (nome, idade, email, curso, bloco_id) 
-        VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO alunos (nome, idade, email, curso, bloco_id)
+         VALUES (?, ?, ?, ?, ?)`,
         [
           nome,
           idade || null,
@@ -65,19 +73,17 @@ export default async function handler(req, res) {
       });
     }
 
-    // 🔍 BUSCAR / LISTAR
+    // 🔍 LISTAR E BUSCAR
     if (req.method === "GET") {
       const { nome, bloco } = req.query;
 
       let query = `
-        SELECT 
-          alunos.*,
-          blocos.nome_bloco
+        SELECT alunos.*, blocos.nome_bloco
         FROM alunos
         LEFT JOIN blocos ON alunos.bloco_id = blocos.id
       `;
 
-      let params = [];
+      const params = [];
 
       if (nome) {
         query += " WHERE alunos.nome LIKE ?";
@@ -99,10 +105,10 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error("Erro na API:", error);
+    console.error(error);
 
     return res.status(500).json({
-      error: "Erro interno no servidor",
+      error: "Erro interno",
       details: error.message
     });
 
